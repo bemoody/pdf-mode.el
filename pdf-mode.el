@@ -26,6 +26,11 @@
 ;;; Code:
 
 (require 'cl)
+(require 'smie)
+
+(defgroup pdf nil
+  "PDF editing mode."
+  :group 'languages)
 
 ;;; --- parser and syntax highlighting ---------------------------------
 
@@ -547,6 +552,76 @@ section (i.e. 0000000234 00000 f)."
                     t))))
        (message "No definition found")))))
 
+;;; --- indentation ----------------------------------------------------
+
+(defcustom pdf-indent-offset 2
+  "Indentation step for nested structures in PDF mode."
+  :type 'integer
+  :safe 'integerp
+  :group 'pdf)
+
+(defvar pdf--smie-grammar
+  (smie-prec2->grammar
+   (smie-bnf->prec2
+    '((expr ("[" expr "]")
+            ("<<" expr ">>")
+            ("q" expr "Q")
+            ("BT" expr "ET")
+            ("BI" expr "ID" expr "EI")
+            ("BMC" expr "EMC")
+            ("BDC" expr "EMC")
+            ("BX" expr "EX")
+            ("obj" expr "endobj")
+            ("stream" expr "endstream"))))))
+
+(defun pdf--mode-smie-rules (kind token)
+  (pcase (cons kind token)
+    ('(:after . "obj") '(column . 0))
+    ('(:after . "stream") '(column . 0))
+    ('(:before . "endobj") '(column . 0))
+    ('(:before . "endstream") '(column . 0))
+    ('(:elem . basic) pdf-indent-offset)
+    ('(:close-all . ">") t)
+    (`(:list-intro . ,_) t)))
+
+(defun pdf--smie-forward-token ()
+  (forward-comment (point-max))
+  (cond
+   ((eobp) nil)
+   ((looking-at "<<") (forward-char 2) "<<")
+   ((and (looking-at ">")
+         (evenp (save-excursion (skip-chars-forward ">"))))
+    (forward-char 2) ">>")
+   ((looking-at "[][()<>]") "")
+   ((looking-at "[{}%[:space:]]")
+    (forward-char 1)
+    (buffer-substring-no-properties (1- (point)) (point)))
+   (t
+    (let ((p (point)))
+      (when (looking-at "/")
+        (forward-char 1))
+      (skip-chars-forward "^][()<>{}/%[:space:]\n")
+      (buffer-substring-no-properties p (point))))))
+
+(defun pdf--smie-backward-token ()
+  (forward-comment (- (point)))
+  (cond
+   ((bobp) nil)
+   ((looking-back ">>") (backward-char 2) ">>")
+   ((and (looking-back "<")
+         (evenp (save-excursion (skip-chars-backward "<"))))
+    (backward-char 2) "<<")
+   ((looking-back "[][()<>]") "")
+   ((looking-back "[{}/%[:space:]]")
+    (backward-char 1)
+    (buffer-substring-no-properties (point) (1+ (point))))
+   (t
+    (let ((p (point)))
+      (skip-chars-backward "^][()<>{}/%[:space:]\n")
+      (when (looking-back "/")
+        (backward-char 1))
+      (buffer-substring-no-properties (point) p)))))
+
 ;;; --- rewrite xref utility -------------------------------------------
 
 (defun pdf--toplevel-objects (cont)
@@ -806,6 +881,13 @@ the maximum ID among objects in the buffer."
   (add-hook 'write-contents-functions 'pdf-fix-xrefs nil t)
   (setf comment-start "%"
         comment-end "")
+
+  ;;;;; indentation
+
+  (smie-setup pdf--smie-grammar
+              #'pdf--mode-smie-rules
+              :forward-token #'pdf--smie-forward-token
+              :backward-token #'pdf--smie-backward-token)
 
   ;;;;; font-lock
 
