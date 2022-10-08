@@ -156,7 +156,7 @@
           (let ((curlen (- (match-beginning 1) start))
                 (end (match-end 1)))
             (pdf--colorize `((1 face font-lock-keyword-face)
-                             ((,start . ,(match-beginning 1)) face font-lock-comment-face)))
+                             ((,start . ,(match-beginning 1)) face font-lock-doc-face)))
             ;; (remove-text-properties start (match-beginning 1)
             ;;                         '(display nil))
             (goto-char (match-beginning 1))
