@@ -316,7 +316,7 @@
                      (rev . ,(string-to-number (match-string 2)))
                      (fn . ,(match-string 3)))
            do
-           (pdf--colorize '((1 face font-lock-reference-face)
+           (pdf--colorize '((1 face font-lock-constant-face)
                             (2 face font-lock-constant-face)
                             (3 face font-lock-keyword-face)))
            (goto-char (1+ (match-end 0)))))
