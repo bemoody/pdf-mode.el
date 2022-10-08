@@ -226,7 +226,7 @@
     (data . ,(match-string 1))))
 
 (def-pdf-parser pdf--read-number *pdf--rx-number* ()
-  (pdf--colorize '((0 face font-lock-constant-face)))
+  (pdf--uncolorize '((0 face nil)))
   (goto-char (match-end 0))
   `((type . number)
     (offset . ,(match-beginning 0))
