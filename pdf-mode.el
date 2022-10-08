@@ -183,7 +183,7 @@
   (let ((offset (match-beginning 0))
         (data (cl-loop do (pdf--skip-whitespace)
                        until (or (eobp) (looking-at ">>"))
-                       collect `(,(pdf--read) . ,(pdf--read)))))
+                       collect `(,(pdf--read-dictionary-key) . ,(pdf--read)))))
     (unless (eobp)
       (pdf--colorize '((0 face nil)))
       (goto-char (match-end 0)))
@@ -210,6 +210,14 @@
       (data . ,data))))
 
 (def-pdf-parser pdf--read-name *pdf--rx-name* ()
+  (pdf--colorize '((0 face font-lock-constant-face)))
+  (goto-char (match-end 1))
+  `((type . name)
+    (offset . ,(match-beginning 0))
+    (end . ,(point))
+    (data . ,(match-string 1))))
+
+(def-pdf-parser pdf--read-dictionary-key *pdf--rx-name* ()
   (pdf--colorize '((0 face font-lock-function-name-face)))
   (goto-char (match-end 1))
   `((type . name)
