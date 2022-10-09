@@ -879,10 +879,21 @@ the maximum ID among objects in the buffer."
 
   ;;;;; syntax
 
+  (modify-syntax-entry '(?! . ?~) "_" pdf-mode-syntax-table)
+  (modify-syntax-entry '(?0 . ?9) "w" pdf-mode-syntax-table)
+  (modify-syntax-entry '(?A . ?Z) "w" pdf-mode-syntax-table)
+  (modify-syntax-entry '(?a . ?z) "w" pdf-mode-syntax-table)
+
+  (modify-syntax-entry ?/ "'" pdf-mode-syntax-table)
+
+  (modify-syntax-entry ?\( "()" pdf-mode-syntax-table)
+  (modify-syntax-entry ?\) ")(" pdf-mode-syntax-table)
+  (modify-syntax-entry ?\[ "(]" pdf-mode-syntax-table)
+  (modify-syntax-entry ?\] ")[" pdf-mode-syntax-table)
   (modify-syntax-entry ?< "(>" pdf-mode-syntax-table)
   (modify-syntax-entry ?> ")<" pdf-mode-syntax-table)
-  (dolist (i '(?. ?- ?_ ?* ?+))
-    (modify-syntax-entry i "_" pdf-mode-syntax-table))
+  (modify-syntax-entry ?{ "." pdf-mode-syntax-table)
+  (modify-syntax-entry ?} "." pdf-mode-syntax-table)
 
   (modify-syntax-entry ?% "<" pdf-mode-syntax-table)
   (modify-syntax-entry ?\n ">" pdf-mode-syntax-table)
