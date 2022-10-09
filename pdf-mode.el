@@ -827,6 +827,18 @@ endstream endobj")
 make it a stream object.  The new object ID will be one more than
 the maximum ID among objects in the buffer."
   (interactive "P")
+  (forward-line 0)
+  (pdf-dig-at-point
+   (lambda (path &rest ignore)
+     (dolist (i path)
+       (goto-char (if (memq (pdf.type i) '(trailer xref-section))
+                      (pdf.offset i)
+                    (pdf.end i))))))
+  (unless (bolp)
+    (insert "\n"))
+  (unless (eolp)
+    (insert "\n")
+    (forward-char -1))
   (pdf--toplevel-objects
    (lambda (nodes objects &rest ignore)
      (let ((max-id (reduce #'max objects :key #'pdf.id :initial-value 0)))
