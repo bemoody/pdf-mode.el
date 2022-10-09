@@ -874,7 +874,7 @@ the maximum ID among objects in the buffer."
   (setf *pdf--ast* nil))
 
 (define-derived-mode pdf-mode
-  fundamental-mode "PDF"
+  prog-mode "PDF"
   "Major mode for editing PDF."
 
   ;;;;; syntax
