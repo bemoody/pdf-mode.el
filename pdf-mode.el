@@ -848,6 +848,7 @@ the maximum ID among objects in the buffer."
 
 (defun pdf-fontify-region (begin end)
   (interactive "r")
+  (goto-char begin)
   (search-backward-regexp *pdf--rx-object* nil t)
   (while (looking-back "[[:digit:]]")
     (backward-char 1))
