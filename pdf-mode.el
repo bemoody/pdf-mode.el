@@ -34,6 +34,11 @@
 
 ;;; --- parser and syntax highlighting ---------------------------------
 
+(defface pdf-escape-glyph-face
+  '((t :underline t))
+  "Face used for `^' and `\\' escape sequences in PDF mode."
+  :group 'pdf)
+
 (defvar *pdf--fix-stream-length* nil)
 (defvar *pdf--highlight* nil)
 (defvar *pdf--no-parse-errors* nil)
@@ -952,6 +957,12 @@ the maximum ID among objects in the buffer."
               :backward-token #'pdf--smie-backward-token)
 
   ;;;;; font-lock
+
+  ;; face-remap-set-base is buggy in Emacs 27.1, and fails if the
+  ;; argument is a single symbol or a list containing a single symbol.
+  (face-remap-set-base 'escape-glyph
+                       'pdf-escape-glyph-face
+                       'pdf-escape-glyph-face)
 
   (pdf--buffer-change-hook)
   (setf font-lock-fontify-buffer-function 'pdf-fontify-buffer)
