@@ -25,7 +25,7 @@
 
 ;;; Code:
 
-(require 'cl)
+(require 'cl-lib)
 (require 'smie)
 
 (defgroup pdf nil
@@ -166,7 +166,7 @@
             ;;                         '(display nil))
             (goto-char (match-beginning 1))
             (when (and (bolp) (> curlen 0))
-              (decf curlen))
+              (cl-decf curlen))
             (goto-char end)
             (when *pdf--fix-stream-length*
               (save-excursion
@@ -262,13 +262,13 @@
         (while (not (eobp))
           (cond ((looking-at "(")
                  (forward-char 1)
-                 (incf parens)
+                 (cl-incf parens)
                  (collect 40))
                 ((looking-at ")")
                  (forward-char 1)
                  (when (zerop parens)
                    (throw 'out t))
-                 (decf parens)
+                 (cl-decf parens)
                  (collect 41))
                 ((looking-at "\\\\[\\\n\r\t\b\f()]")
                  (goto-char (match-end 0))
@@ -316,7 +316,7 @@
                      (offset . ,(match-beginning 0))
                      (end . ,(match-end 0))
                      (address . ,(string-to-number (match-string 1)))
-                     (id . ,(incf start))
+                     (id . ,(cl-incf start))
                      (rev . ,(string-to-number (match-string 2)))
                      (fn . ,(match-string 3)))
            do
@@ -395,7 +395,7 @@
        (or (not name)
            (string= name (pdf.data node)))))
 (defun pdf.stream (node)
-  (case (pdf.type node)
+  (cl-case (pdf.type node)
     (stream node)
     (object (pdf.stream (pdf.data node)))))
 
@@ -407,7 +407,7 @@
 
 (defun pdf.visit (node func)
   (funcall func node 'before)
-  (case (pdf.type node)
+  (cl-case (pdf.type node)
     (object (pdf.visit (pdf.data node) func))
     (stream (pdf.visit (pdf.dict node) func))
     (dictionary (mapc (lambda (x)
@@ -500,7 +500,7 @@
             (when (and (<= (pdf.offset node) pt)
                        (<= pt (pdf.end node)))
               (push node path))
-            (case (pdf.type node)
+            (cl-case (pdf.type node)
               (object
                (puthash (pdf.id node) node defs)
                (when (string-equal "Page" (pdf.object-type node))
@@ -524,7 +524,7 @@ this mode with <escape> or C-g."
    (lambda (path defs refs _pages)
      (when path
        (let ((node (car path)))
-         (case (pdf.type node)
+         (cl-case (pdf.type node)
            ((ref object)
             (let ((refs (gethash (pdf.id node) refs))
                   (def (gethash (pdf.id node) defs)))
@@ -565,7 +565,7 @@ section (i.e. 0000000234 00000 f)."
    (lambda (path defs _refs _pages)
      (unless (when path
                (let ((node (car path)))
-                 (case (pdf.type node)
+                 (cl-case (pdf.type node)
                    ((ref)
                     (let ((def (gethash (pdf.id node) defs)))
                       (when def
@@ -614,7 +614,7 @@ section (i.e. 0000000234 00000 f)."
    ((eobp) nil)
    ((looking-at "<<") (forward-char 2) "<<")
    ((and (looking-at ">")
-         (evenp (save-excursion (skip-chars-forward ">"))))
+         (cl-evenp (save-excursion (skip-chars-forward ">"))))
     (forward-char 2) ">>")
    ((looking-at "[][()<>]") "")
    ((looking-at "[{}%[:space:]]")
@@ -633,7 +633,7 @@ section (i.e. 0000000234 00000 f)."
    ((bobp) nil)
    ((looking-back ">>" (- (point) 2)) (backward-char 2) ">>")
    ((and (looking-back "<" (1- (point)))
-         (evenp (save-excursion (skip-chars-backward "<"))))
+         (cl-evenp (save-excursion (skip-chars-backward "<"))))
     (backward-char 2) "<<")
    ((looking-back "[][()<>]" (1- (point))) "")
    ((looking-back "[{}/%[:space:]]" (1- (point)))
@@ -656,17 +656,17 @@ section (i.e. 0000000234 00000 f)."
            when (eq 'xref type) collect i into xref
            when (eq 'startxref type) collect i into startxref
            when (eq 'trailer type) collect i into trailer
-           finally (return (funcall cont nodes objects xref startxref trailer))))
+           finally (cl-return (funcall cont nodes objects xref startxref trailer))))
 
 (defun pdf--do-reverse (things func)
   (mapc func
-        (sort (copy-list things)
+        (sort (cl-copy-list things)
               (lambda (a b)
                 (> (pdf.offset a) (pdf.offset b))))))
 
 (defun pdf--write-xref (objects)
   (insert "xref\n")
-  (let ((objects (sort (copy-list objects)
+  (let ((objects (sort (cl-copy-list objects)
                        (lambda (a b)
                          (< (pdf.id a) (pdf.id b)))))
         (next-id 1)
@@ -684,7 +684,7 @@ section (i.e. 0000000234 00000 f)."
       (insert (format "%010d %05d n \n"
                       (- (pdf.offset obj) 1)
                       (pdf.rev obj)))
-      (incf next-id))
+      (cl-incf next-id))
     (save-excursion
       (goto-char seq-start-pos)
       (insert (format "%d %d\n" seq-start-id (- next-id seq-start-id))))
@@ -745,7 +745,7 @@ good idea, but I got into it."
        (pdf--do-reverse objects
                         (lambda (obj)
                           (unless (gethash (pdf.id obj) refs)
-                            (incf count)
+                            (cl-incf count)
                             (delete-region (pdf.offset obj)
                                            (pdf.end obj)))))
        (message "%d object(s) removed" count)))))
@@ -806,7 +806,7 @@ occur if the stream is not really compressed.  If there's a
   (interactive)
   (pdf-dig-at-point
    (lambda (path &rest _ignore)
-     (let ((stream (cl-loop for i in path when (pdf.stream i) do (return it))))
+     (let ((stream (cl-loop for i in path when (pdf.stream i) do (cl-return it))))
        (if stream
            (save-excursion
              (pdf--inflate-stream stream))
@@ -820,7 +820,7 @@ occur if the stream is not really compressed.  If there's a
      (cl-loop for i in path
               for offset = (funcall edge i)
               when (funcall cmp offset (point))
-              do (return (pdf--goto-location offset))))))
+              do (cl-return (pdf--goto-location offset))))))
 
 (defun pdf-beginning-of-thing ()
   "Move to the beginning of the thing at point."
@@ -875,7 +875,7 @@ the maximum ID among objects in the buffer."
     (forward-char -1))
   (pdf--toplevel-objects
    (lambda (_nodes objects &rest _ignore)
-     (let ((max-id (reduce #'max objects :key #'pdf.id :initial-value 0)))
+     (let ((max-id (cl-reduce #'max objects :key #'pdf.id :initial-value 0)))
        (insert (format (if stream
                            *pdf--new-stream-template*
                          *pdf--new-object-template*) (+ max-id 1)))
