@@ -880,7 +880,7 @@ the maximum ID among objects in the buffer."
                            *pdf--new-stream-template*
                          *pdf--new-object-template*) (+ max-id 1)))
        (search-backward "|")
-       (delete-forward-char 1)))))
+       (delete-char 1)))))
 
 (defvar *pdf--needs-fontification* nil)
 
