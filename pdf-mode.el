@@ -416,6 +416,18 @@
     (trailer (pdf.visit (pdf.data node) func)))
   (funcall func node 'after))
 
+(defun pdf--dict-put (dict propname string-value)
+  (unless (eq 'dictionary (pdf.type dict))
+    (error "Not a dictionary."))
+  (let ((prop (pdf.dict-val dict propname)))
+    (if prop
+        (progn
+          (goto-char (pdf.offset prop))
+          (delete-region (point) (pdf.end prop))
+          (insert string-value))
+      (goto-char (- (pdf.end dict) 2))
+      (insert " /" propname " " string-value))))
+
 ;;; --- highlight references -------------------------------------------
 
 (defun pdf--highlight-regions (regions &optional face)
@@ -649,18 +661,30 @@ section (i.e. 0000000234 00000 f)."
                 (> (pdf.offset a) (pdf.offset b))))))
 
 (defun pdf--write-xref (objects)
+  (insert "xref\n")
   (let ((objects (sort (copy-list objects)
                        (lambda (a b)
-                         (< (pdf.id a) (pdf.id b))))))
-    ;; XXX: optimize this perhaps.  we can insert a single header
-    ;; entry for consecutive IDs.
-    (insert "xref\n0 1\n0000000000 65535 f \n")
+                         (< (pdf.id a) (pdf.id b)))))
+        (next-id 1)
+        (seq-start-id 0)
+        (seq-start-pos (point)))
+    (insert "0000000000 65535 f \n")
     (dolist (obj objects)
-      (insert (format "%d 1\n%010d %05d n \n"
-                      (pdf.id obj)
+      (unless (= (pdf.id obj) next-id)
+        (save-excursion
+          (goto-char seq-start-pos)
+          (insert (format "%d %d\n" seq-start-id (- next-id seq-start-id))))
+        (setf next-id (pdf.id obj)
+              seq-start-id next-id
+              seq-start-pos (point)))
+      (insert (format "%010d %05d n \n"
                       (- (pdf.offset obj) 1)
-                      (pdf.rev obj))))
-    (insert "\n")))
+                      (pdf.rev obj)))
+      (incf next-id))
+    (save-excursion
+      (goto-char seq-start-pos)
+      (insert (format "%d %d\n" seq-start-id (- next-id seq-start-id))))
+    next-id))
 
 (defun pdf--fix-xrefs ()
   (let ((*pdf--fix-stream-length* t)
@@ -675,10 +699,16 @@ section (i.e. 0000000234 00000 f)."
                             (pdf.end (car trailer)))))
          (pdf--do-reverse (append xref startxref trailer) del)
          (goto-char (point-max))
-         (let ((xref (point)))
-           (pdf--write-xref objects)
-           (insert trailer-code
-                   (format "startxref\n%d\n%%%%EOF" (- xref 1)))))))))
+         (let ((xref (point))
+               (next-object-id (pdf--write-xref objects)))
+           (save-restriction
+             (narrow-to-region (point) (point))
+             (insert trailer-code
+                     (format "startxref\n%d\n%%%%EOF\n" (- xref 1)))
+             (goto-char (point-min))
+             (let ((trailer (pdf--read)))
+               (pdf--dict-put (pdf.data trailer) "Size"
+                              (number-to-string next-object-id))))))))))
 
 (defun pdf-fix-xrefs ()
   "Rewrite the xref, trailer and startxref sections based on the
